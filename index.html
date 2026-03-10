@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Картки переміщень</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Advent+Pro:ital@0;1&family=Alumni+Sans:wght@100&family=Roboto+Flex:opsz,wght@8..144,100..1000&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=line_end_arrow_notch" />
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; color:#333; padding:20px; }
+    
+    /* Стилі прев'ю на екрані */
+    .template-preview { display: grid; grid-template-columns: 1fr 1fr; gap:0; height:100%; }
+    .template-preview .header, .label-box .header { font-family: 'Roboto Flex', sans-serif; }
+
+    .template-preview .header { 
+      grid-column: 1 / -1; 
+      text-align:center; 
+      font-weight:900; 
+      font-size:16pt; 
+      margin-top:-3px; 
+      margin-bottom:0.5mm; 
+      padding-bottom:1mm; 
+      border-bottom:1px solid black; 
+      display:flex; 
+      justify-content:center; 
+      align-items:center; 
+      white-space:nowrap; 
+      overflow:hidden; 
+      text-overflow:ellipsis; 
+      text-transform: uppercase; 
+    }
+    .template-preview .cell { 
+      border:0; 
+      padding:1.5mm 1mm; 
+      text-align:center; 
+      font-size:10pt; 
+      line-height:1.3; 
+      display:flex; 
+      flex-direction:column; 
+      justify-content:flex-start; 
+      min-height:20mm;
+      text-transform: uppercase; 
+    }
+    .template-preview .cell div { border-bottom:none !important; }
+    .template-preview .cell:nth-child(2), .template-preview .cell:nth-child(4) { border-right:1px dashed black; }
+    .template-preview .cell:nth-child(2), .template-preview .cell:nth-child(3) { border-bottom:1px dashed black; }
+    .template-preview .cell strong { display:block; font-weight:bold; color:#374151; margin-bottom:0.5mm; font-size:10pt; }
+    .template-preview .header .material-symbols-outlined { font-size:20pt; font-weight:700; margin:0 8px; color:black; margin-top:-3px; display:inline-block; line-height:1; }
+
+    /* Контейнери прев'ю */
+    .single-preview { width:105mm; height:59.4mm; background:white; box-shadow:0 4px 12px rgba(0,0,0,.15); border:1px solid #e5e5e5; padding:4mm; transform:scale(1.2); transform-origin:top center; }
+    .preview-container { width:100%; height:380px; display:flex; justify-content:center; align-items:flex-start; border:1px solid #e5e5e5; background:#f8f9fa; padding:40px 20px; border-radius:0.75rem; overflow:hidden; }
+
+    /* Стилі для генерації PDF */
+    .label-box { 
+      border:1px solid black; 
+      width:105mm; 
+      height:59.4mm; 
+      padding:0; 
+      box-sizing:border-box; 
+      overflow:hidden;
+      color: black !important; /* Примусовий чорний для друку */
+    }
+    .label-box * { color: black !important; border-color: black !important; } /* Тотальний чорний для всіх елементів */
+
+    .label-box .template-preview { display:grid; grid-template-columns:1fr 1fr; grid-template-rows:auto 1fr 1fr; gap:0; padding-top:0; height:100%; box-sizing:border-box; }
+    
+    .label-box .header { 
+      grid-column:1 / -1; 
+      grid-row:1; 
+      text-align:center; 
+      font-weight:900; 
+      font-size:18pt; 
+      margin-top:0; 
+      margin-bottom:0.2mm; 
+      padding-bottom:5mm; 
+      border-bottom:1px solid black; 
+      white-space:normal; 
+      overflow:visible; 
+      line-height:1.2; 
+      text-transform: uppercase; 
+    }
+    .label-box .header .material-symbols-outlined { 
+      font-size:20pt; 
+      font-weight:700; 
+      margin:0 8px; 
+      margin-top:2mm; 
+      display: inline-block; 
+    }
+    .label-box .cell { 
+      display:flex; 
+      flex-direction:column; 
+      justify-content:flex-start; 
+      padding:1mm; 
+      text-align:center; 
+      font-size:10pt; 
+      border:0;
+      text-transform: uppercase; 
+    }
+    .label-box .template-preview .cell:nth-child(2), .label-box .template-preview .cell:nth-child(4) { border-right:1px dashed black !important; }
+    .label-box .template-preview .cell:nth-child(2), .label-box .template-preview .cell:nth-child(3) { border-bottom:1px dashed black !important; }
+    .label-box .cell strong { display:block; font-weight:bold; margin-bottom:0.5mm; font-size:10pt; }
+
+    /* Спойлери */
+    .spoiler-content { max-height:0; overflow:hidden; transition:max-height .5s ease-in-out; }
+    .spoiler-content.open { max-height:1000px; }
+    .spoiler-dynamic-content { opacity:0; transition:opacity .3s ease-in-out; overflow-wrap:break-word; }
+    .spoiler-dynamic-content.active { opacity:1; }
+  </style>
+</head>
+<body class="p-4 font-sans">
+  <div class="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
+    <!-- Ліва панель керування -->
+    <div class="w-full lg:w-1/3 p-6 bg-white rounded-xl shadow-lg border border-gray-100">
+      <h1 class="text-2xl font-bold mb-6 text-gray-800 text-center">Генератор карток переміщень</h1>
+
+      <div class="flex space-x-4 mb-8">
+        <div class="w-1/2">
+          <label for="input-from" class="block text-sm font-medium text-gray-700 mb-1">Відправник:</label>
+          <select id="input-from" class="w-full py-2 px-3 border border-gray-300 bg-white rounded-lg shadow-sm sm:text-lg"></select>
+        </div>
+        <div class="w-1/2">
+          <label for="input-to" class="block text-sm font-medium text-gray-700 mb-1">Отримувач:</label>
+          <select id="input-to" class="w-full py-2 px-3 border border-gray-300 bg-white rounded-lg shadow-sm sm:text-lg"></select>
+        </div>
+      </div>
+
+      <div class="flex space-x-4">
+        <button id="pdf-button" class="flex-1 py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-lg font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none">
+          Завантажити PDF
+        </button>
+        <button id="print-button" class="flex-1 py-3 px-4 border border-transparent rounded-lg shadow-sm text-lg font-medium text-white bg-indigo-700 hover:bg-indigo-800 focus:outline-none">
+          Відкрити PDF
+        </button>
+      </div>
+    </div>
+
+    <!-- Права панель прев'ю -->
+    <div class="w-full lg:w-2/3">
+      <h2 class="text-xl font-semibold mb-3 text-gray-700 text-center">Попередній перегляд</h2>
+      <div class="preview-container rounded-xl">
+        <div class="single-preview template-preview">
+          <div class="header">--- <span class="material-symbols-outlined">line_end_arrow_notch</span> ---</div>
+          <div class="cell"><strong>Накладна №</strong></div>
+          <div class="cell"><strong>Дата</strong></div>
+          <div class="cell"><strong>Кількість місць</strong></div>
+          <div class="cell"><strong>Відповідальний</strong></div>
+        </div>
+      </div>
+      <p class="text-sm text-gray-500 mt-4 text-center">PDF генерується у форматі A4. На сторінці поміщається 10 карток (2 стовпці, 5 рядків).</p>
+    </div>
+  </div>
+
+  <!-- Футер / Інструкції -->
+  <div class="w-full max-w-7xl mx-auto mt-6 no-print">
+    <div class="bg-white shadow rounded-xl p-6 border border-gray-100">
+      <div class="flex flex-col gap-4">
+        <div>
+          <button id="spoiler-trigger-1" class="w-full p-3 text-center font-semibold rounded-lg bg-gray-300 hover:bg-gray-400 text-gray-700">
+            Інструкція з використання
+          </button>
+          <div id="spoiler-content-1" class="text-sm spoiler-content">
+            <div class="spoiler-dynamic-content p-4 text-left text-gray-700"></div>
+          </div>
+        </div>
+
+        <div>
+          <button id="spoiler-trigger-2" class="w-full p-3 text-center font-semibold rounded-lg bg-gray-300 hover:bg-gray-400 text-gray-700">
+            Згенерував Shans для Віста
+          </button>
+          <div id="spoiler-content-2" class="text-sm spoiler-content">
+            <div class="spoiler-dynamic-content p-4 text-left text-gray-700"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const LOCATIONS_PLACEHOLDERS = ['--- Звідки ---', '--- Куди ---'];
+    const LOCATIONS = ['Засумська','Мудрого','Сірка','Перемоги','Чернігівська','Кременчук','Степанівка','Ромни','Недригайлів','Охтирка'];
+    const ARROW_ICON = '<span class="material-symbols-outlined">line_end_arrow_notch</span>';
+    let fromInput, toInput;
+
+    const populateSelect = (sel, placeholderText) => {
+      const opt = document.createElement('option');
+      opt.value = opt.textContent = placeholderText;
+      opt.selected = true;
+      opt.disabled = true;
+      sel.appendChild(opt);
+      LOCATIONS.forEach(l => {
+        const o = document.createElement('option');
+        o.value = o.textContent = l;
+        sel.appendChild(o);
+      });
+    };
+
+    const updatePreview = () => {
+      if (!fromInput || !toInput) return;
+      const from = fromInput.value.trim();
+      const to = toInput.value.trim();
+      const f = LOCATIONS_PLACEHOLDERS.includes(from) ? '---' : from;
+      const t = LOCATIONS_PLACEHOLDERS.includes(to) ? '---' : to;
+      
+      const previewCells = document.querySelectorAll('.single-preview .cell');
+      if (previewCells.length >= 4) {
+        previewCells[0].innerHTML = `<strong>Накладна №</strong>`;
+        previewCells[1].innerHTML = `<strong>Дата</strong>`;
+        previewCells[2].innerHTML = `<strong>Кількість місць</strong>`;
+        previewCells[3].innerHTML = `<strong>Відповідальний</strong>`;
+      }
+      document.querySelector('.single-preview .header').innerHTML = `${f} ${ARROW_ICON} ${t}`;
+    };
+
+    const generateLabelsHtml = (from, to) => {
+      const arrowHeaderHtml = `${from} ${ARROW_ICON} ${to}`;
+      const labelHtml = `
+        <div class="label-box">
+          <div class="template-preview">
+            <div class="header">${arrowHeaderHtml}</div>
+            <div class="cell"><strong>Накладна №</strong></div>
+            <div class="cell"><strong>Дата</strong></div>
+            <div class="cell"><strong>Кількість місць</strong></div>
+            <div class="cell"><strong>Відповідальний</strong></div>
+          </div>
+        </div>
+      `;
+      return `<div id="pdf-content-to-capture" style="display:grid;grid-template-columns:105mm 105mm;grid-template-rows:repeat(5,59.4mm);width:210mm;height:297mm;background:white;">${labelHtml.repeat(10)}</div>`;
+    };
+
+    const generatePdfDoc = async (f, t, action = 'download') => {
+      if (LOCATIONS_PLACEHOLDERS.includes(f) || LOCATIONS_PLACEHOLDERS.includes(t)) {
+        alertMessage('Оберіть локації!', 'bg-yellow-500');
+        return false;
+      }
+      try { await document.fonts.ready; } catch(e){}
+
+      const html = generateLabelsHtml(f, t);
+      const clone = document.createElement('div');
+      clone.innerHTML = html;
+      Object.assign(clone.style, { position:'fixed', top:'0', left:'-9999px', width:'210mm', height:'297mm', background:'white', zIndex:'-1000', pointerEvents:'none' });
+      document.body.appendChild(clone);
+      
+      // Даємо браузеру час на рендер
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      
+      try {
+        const contentToCapture = clone.querySelector('#pdf-content-to-capture');
+        const canvas = await html2canvas(contentToCapture, { scale:3, useCORS:true, logging:false, allowTaint:true });
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ unit:'mm', format:'a4', orientation:'p' });
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+        
+        pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+        const filename = `Картки_${f}_${t}.pdf`;
+        
+        if (action === 'download') pdf.save(filename);
+        else window.open(pdf.output('bloburl'), '_blank');
+        return true;
+      } catch (err) {
+        console.error('Помилка:', err);
+        alertMessage('Помилка генерації PDF. Спробуйте ще раз.', 'bg-red-600');
+        return false;
+      } finally {
+        if (document.body.contains(clone)) document.body.removeChild(clone);
+      }
+    };
+
+    const handlePdfAction = async (e, action) => {
+      const btn = e.currentTarget;
+      if (LOCATIONS_PLACEHOLDERS.includes(fromInput.value) || LOCATIONS_PLACEHOLDERS.includes(toInput.value)) {
+        alertMessage('Оберіть локації!', 'bg-yellow-500'); return;
+      }
+      const originalText = btn.textContent;
+      btn.disabled = true; 
+      btn.textContent = 'Генерування...';
+      await generatePdfDoc(fromInput.value, toInput.value, action);
+      btn.disabled = false; 
+      btn.textContent = originalText;
+    };
+
+    const alertMessage = (msg, bg = 'bg-red-600') => {
+      const existing = document.getElementById('alert'); if (existing) existing.remove();
+      const div = document.createElement('div');
+      div.id = 'alert'; div.textContent = msg;
+      div.className = `fixed top-4 left-1/2 transform -translate-x-1/2 ${bg} text-white p-4 rounded-lg shadow-xl z-[9999] transition duration-300`;
+      document.body.appendChild(div);
+      setTimeout(() => div.remove(), 3000);
+    };
+
+    const setupSpoilers = () => {
+      const texts = {
+        'spoiler-trigger-1': `<h3 class="font-bold mb-2">Загальна інструкція</h3>
+          <p class="mb-2">1. Оберіть локації у списках.</p>
+          <p class="mb-1"><strong>Завантажити PDF</strong> — зберігає файл на комп'ютер.</p>
+          <p class="mb-1"><strong>Відкрити PDF</strong> — відкриває файл у новій вкладці для друку.</p>
+          <p class="mb-2 text-red-700">На PDF буде 10 карток (2 стовпці по 5 рядків) на аркуші А4.</p>`,
+        'spoiler-trigger-2': `<p class='text-gray-600'>Бо компанія має оптимізовувати потреби співробітників.</p>`
+      };
+
+      let activeSpoilerId = null;
+      document.querySelectorAll('[id^="spoiler-trigger"]').forEach(trigger => {
+        trigger.addEventListener('click', () => {
+          const contentId = trigger.id.replace('trigger', 'content');
+          const contentContainer = document.getElementById(contentId);
+          const dynamicContent = contentContainer.querySelector('.spoiler-dynamic-content');
+          
+          if (activeSpoilerId === trigger.id) {
+            dynamicContent.classList.remove('active'); 
+            contentContainer.classList.remove('open'); 
+            activeSpoilerId = null;
+          } else {
+            if (activeSpoilerId) {
+              const prevContainer = document.getElementById(activeSpoilerId.replace('trigger', 'content'));
+              prevContainer.querySelector('.spoiler-dynamic-content').classList.remove('active');
+              prevContainer.classList.remove('open');
+            }
+            dynamicContent.innerHTML = texts[trigger.id];
+            contentContainer.classList.add('open');
+            dynamicContent.classList.add('active');
+            activeSpoilerId = trigger.id;
+          }
+        });
+      });
+    };
+
+    window.onload = () => {
+      fromInput = document.getElementById('input-from');
+      toInput = document.getElementById('input-to');
+      populateSelect(fromInput, LOCATIONS_PLACEHOLDERS[0]);
+      populateSelect(toInput, LOCATIONS_PLACEHOLDERS[1]);
+      
+      fromInput.addEventListener('change', updatePreview);
+      toInput.addEventListener('change', updatePreview);
+      
+      document.getElementById('pdf-button').addEventListener('click', (e) => handlePdfAction(e, 'download'));
+      document.getElementById('print-button').addEventListener('click', (e) => handlePdfAction(e, 'open'));
+      
+      updatePreview();
+      setupSpoilers();
+    };
+  </script>
+</body>
+</html>
